@@ -39,7 +39,7 @@ def GetLandsatSensor(MTLfile):
     return sensor
 def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
                         anglesfile='angles.img',outfile='cloud.img',
-                        keepintermediates=False,verbose=False,
+                        keepintermediates=False,verbose=True,
                         tempdir='.',mincloudsize=0,
                         cloudprobthreshold=100 * fmask.config.FmaskConfig.Eqn17CloudProbThresh,
                         nirsnowthreshold=fmask.config.FmaskConfig.Eqn20NirSnowThresh,
@@ -71,51 +71,46 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
     fmask.fmask.doFmask(fmaskFilenames, fmaskConfig)
 
 def autofmask(dirname):
+    os.chdir(dirname)
     MTLfile = glob(os.path.join(dirname, '*MTL.TXT'))
     refname=os.path.join(dirname,'ref.img')
     themalname=os.path.join(dirname,'thermal.img')
+    srcReflist=os.path.join(dirname,'L*_B[1,2,3,4,5,7].TIF')
+    srcReflist=glob(srcReflist)
+    srcThemal=os.path.join(dirname,'L*_B6.TIF')
+    srcThemal=glob(srcThemal)
+    anglesname=os.path.join(dirname,'angles.img')
+    toaname=os.path.join(dirname,'toa.img')
     # 合并文件
-    refMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o', refname, 'L*_B[1,2,3,4,5,7].TIF']
-    refMergeArgv = GlobArgv(refMergeArgv)
-    themalMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o', 'thermal.img', 'L*_B6.TIF']
-    themalMergeArgv = GlobArgv(themalMergeArgv)
-    gdal_merge.main(refMergeArgv)
-    gdal_merge.main(themalMergeArgv)
+    refMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o', refname]
+    refMergeArgv.extend(srcReflist)
+    themalMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o',themalname]
+    themalMergeArgv.extend(srcThemal)
+    if not os.path.exists(refname):
+        gdal_merge.main(refMergeArgv)
+    else:
+        print('跳过组合多光谱')
+    if not os.path.exists(themalname):
+        gdal_merge.main(themalMergeArgv)
+    else:
+        print('跳过组合热红外')
     # 生成角度文件
     # 读取文件信息
     MTLfile = MTLfile[0]
     mtlInfo = fmask.config.readMTLFile(MTLfile)
-    imgInfo = fileinfo.ImageInfo('ref.img')
-    corners = landsatangles.findImgCorners('ref.img', imgInfo)
-    nadirLine = landsatangles.findNadirLine(corners)
-    extentSunAngles = landsatangles.sunAnglesForExtent(imgInfo, mtlInfo)
-    satAzimuth = landsatangles.satAzLeftRight(nadirLine)
-    landsatangles.makeAnglesImage('ref.img', 'angles.img', nadirLine, extentSunAngles, satAzimuth, imgInfo)
+    if not os.path.exists(anglesname):
+        imgInfo = fileinfo.ImageInfo(refname)
+        corners = landsatangles.findImgCorners(refname, imgInfo)
+        nadirLine = landsatangles.findNadirLine(corners)
+        extentSunAngles = landsatangles.sunAnglesForExtent(imgInfo, mtlInfo)
+        satAzimuth = landsatangles.satAzLeftRight(nadirLine)
+        landsatangles.makeAnglesImage(refname, anglesname, nadirLine, extentSunAngles, satAzimuth, imgInfo)
     # 生成辅助临时文件：反射率
-    fmask.landsatTOA.makeTOAReflectance('ref.img', MTLfile, 'angles.img', 'toa.img')
+    if not os.path.exists(toaname):
+        fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
     LandsatFmaskRoutine(MTLfile)
 
 if __name__=='__main__':
-    os.chdir('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
-    MTLfile=glob(os.path.join(os.getcwd(), '*MTL.TXT'))
-    #合并文件
-    refMergeArgv=['','-separate','-of','HFA','-co','COMPRESSED=YES','-o','ref.img','L*_B[1,2,3,4,5,7].TIF']
-    refMergeArgv=GlobArgv(refMergeArgv)
-    themalMergeArgv=['','-separate','-of','HFA','-co','COMPRESSED=YES','-o','thermal.img','L*_B6.TIF']
-    themalMergeArgv=GlobArgv(themalMergeArgv)
-    gdal_merge.main(refMergeArgv)
-    gdal_merge.main(themalMergeArgv)
-    #生成角度文件
-    #读取文件信息
-    MTLfile=MTLfile[0]
-    mtlInfo = fmask.config.readMTLFile(MTLfile)
-    imgInfo = fileinfo.ImageInfo('ref.img')
-    corners = landsatangles.findImgCorners('ref.img', imgInfo)
-    nadirLine = landsatangles.findNadirLine(corners)
-    extentSunAngles = landsatangles.sunAnglesForExtent(imgInfo, mtlInfo)
-    satAzimuth = landsatangles.satAzLeftRight(nadirLine)
-    landsatangles.makeAnglesImage('ref.img','angles.img',nadirLine, extentSunAngles, satAzimuth, imgInfo)
-    #生成辅助临时文件：反射率
-    fmask.landsatTOA.makeTOAReflectance('ref.img', MTLfile, 'angles.img', 'toa.img')
-    LandsatFmaskRoutine(MTLfile)
+    autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
+
 
