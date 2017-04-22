@@ -73,7 +73,7 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
 def autofmask(dirname):
     MTLfile = glob(os.path.join(dirname, '*MTL.TXT'))
     refname=os.path.join(dirname,'ref.img')
-
+    themalname=os.path.join(dirname,'thermal.img')
     # 合并文件
     refMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o', refname, 'L*_B[1,2,3,4,5,7].TIF']
     refMergeArgv = GlobArgv(refMergeArgv)
