@@ -109,7 +109,8 @@ def autofmask(dirname):
     if not os.path.exists(toaname):
         fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
     LandsatFmaskRoutine(MTLfile)
-
+def walkfmask(dirname):
+    os.chdir(dirname)
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
 
