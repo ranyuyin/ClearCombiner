@@ -9,6 +9,7 @@ from glob import glob
 from fmask import landsatangles,saturationcheck
 import fmask
 import gdal_merge
+import numpy as np
 from rios import fileinfo
 def GlobArgv(Argv):
     outList=[]
@@ -116,6 +117,23 @@ def walkfmask(dirname):
     for subdirname in subfoldlist:
         autofmask(subdirname)
 def walkclearQA(dirname):
+    srcdatasetList=getFmasklist(dirname)
+    (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
+    clearQA=np.zeros((dstdataset.RasterYSize(),dstdataset.RasterXSize()))
+    for i in range(len(srcdatasetList)):
+        thisfmask=srcdatasetList[i].ReadAsArray()
+        thisfmask=thisfmask==clrvalue
+        thisfmask=np.pad()
+        clearQA=clearQA+thisfmask*(2**i)
+    masknamelist=getnamelist(srcdatasetList)
+    #return clearQA,masknamelist
+def getFmasklist(dirname):
+    return
+def unionGeo(srcdatasetList):
+    extent=
+    dstgeo.shape=
+    return (dstgeo,gaindiclist)
+def getnamelist(srcdatasetList):
     return
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
