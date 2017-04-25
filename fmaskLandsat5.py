@@ -115,6 +115,8 @@ def walkfmask(dirname):
     subfoldlist = [os.path.join(dirname, i) for i in subfoldlist if os.path.isdir(os.path.join(dirname, i))]
     for subdirname in subfoldlist:
         autofmask(subdirname)
+def walkclearQA(dirname):
+    return
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
 
