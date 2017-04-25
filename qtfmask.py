@@ -2,6 +2,7 @@
 import sys
 from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButton,QVBoxLayout,
                              QAction, QFileDialog, QApplication,QLabel)
+import fmaskLandsat5
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
     def __init__(self):
@@ -15,6 +16,7 @@ class qUfmask(QWidget):
         self.exButton.clicked.connect(self.selectfold)
         self.runButton=QPushButton("运行")
         self.runButton.sizeHint()
+        self.runButton.clicked.connect(self.dowalkfmask)
         hboxrun.addStretch(0)
         hboxrun.addWidget(self.runButton)
         hboxrun.addStretch(0)
@@ -35,7 +37,9 @@ class qUfmask(QWidget):
     def selectfold(self):
         name = QFileDialog.getExistingDirectory(self)
         self.foldnEdit.setText(name)
-
+    def dowalkfmask(self):
+        rootdir=self.foldnEdit.text()
+        fmaskLandsat5.walkfmask(rootdir)
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = qUfmask()

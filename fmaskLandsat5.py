@@ -54,8 +54,8 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
     fmaskFilenames.setThermalFile(themalfile)
     fmaskFilenames.setOutputCloudMaskFile(outfile)
     fmaskConfig = fmask.config.FmaskConfig(sensor)
-    saturationcheck.makeSaturationMask(fmaskConfig,'ref.tif','saturationmask.tif')
-    fmaskFilenames.setSaturationMask('saturationmask.tif')
+    saturationcheck.makeSaturationMask(fmaskConfig,'ref.img','saturationmask.img')
+    fmaskFilenames.setSaturationMask('saturationmask.img')
     fmaskConfig.setThermalInfo(thermalInfo)
     fmaskConfig.setAnglesInfo(anglesInfo)
     fmaskConfig.setKeepIntermediates(keepintermediates)
@@ -108,8 +108,13 @@ def autofmask(dirname):
     # 生成辅助临时文件：反射率
     if not os.path.exists(toaname):
         fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
+    print("begin this")
     LandsatFmaskRoutine(MTLfile)
-
+def walkfmask(dirname):
+    subfoldlist = os.listdir(dirname)
+    subfoldlist = [os.path.join(dirname, i) for i in subfoldlist if os.path.isdir(os.path.join(dirname, i))]
+    for subdirname in subfoldlist:
+        autofmask(subdirname)
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
 
