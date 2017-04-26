@@ -122,11 +122,13 @@ def walkclearQA(dirname):
     (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
     clearQA=np.zeros((dstdataset.RasterYSize(),dstdataset.RasterXSize()))
     for i in range(len(srcdatasetList)):
-        thisfmask=srcdatasetList[i].ReadAsArray()
-        thisfmask=thisfmask==clrvalue
-        thisfmask=np.pad()
+        thisfmask = srcdatasetList[i].ReadAsArray()
+        thisfmask = (thisfmask == 1 or thisfmask == 4 or thisfmask == 5)
+        thisfmask = np.pad(thisfmask,gaindiclist[i],'constant',constant_values=0)
         clearQA=clearQA+thisfmask*(2**i)
+    dstdataset.GetRasterBand(1).WriteArray(clearQA)
     masknamelist=getnamelist(srcdatasetList)
+    # todo:保存masknamelist
     #return clearQA,masknamelist
 def getFmasklist(dirname):
     return
@@ -147,6 +149,10 @@ def unionGeo(srcdatasetList):
     #暂时只处理横竖分辨率相同的情况
     uGeotransform=srcdatasetList[0].GetGeoTransform()
     gaindiclist=deltaExtent/uGeotransform[1]
+    gaindiclist=[
+        [(gaindiclist[i,0],gaindiclist[i,1]),
+        (gaindiclist[i,2],gaindiclist[i,3])]
+        for i in range(len(gaindiclist))]
     uGeotransform[0]=uExtent[2]
     uGeotransform[3]=uExtent[0]
     a = np.array([[uGeotransform[1], uGeotransform[2]], [uGeotransform[4], uGeotransform[5]]])
