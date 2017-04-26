@@ -7,8 +7,8 @@ Created on Mon Apr 17 09:13:29 2017
 import os
 from glob import glob
 from fmask import landsatangles,saturationcheck
-import fmask
-import gdal_merge
+import fmask,gdal
+import gdal_merge,ConvTrans
 import numpy as np
 from rios import fileinfo
 def GlobArgv(Argv):
@@ -118,6 +118,7 @@ def walkfmask(dirname):
         autofmask(subdirname)
 def walkclearQA(dirname):
     srcdatasetList=getFmasklist(dirname)
+    os.chdir(dirname)
     (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
     clearQA=np.zeros((dstdataset.RasterYSize(),dstdataset.RasterXSize()))
     for i in range(len(srcdatasetList)):
@@ -130,8 +131,32 @@ def walkclearQA(dirname):
 def getFmasklist(dirname):
     return
 def unionGeo(srcdatasetList):
-    extent=
-    dstgeo.shape=
+    extentlist=np.zeros((len(srcdatasetList),4))
+    for i in len(srcdatasetList):
+        trans=srcdatasetList[i].GetGeoTransform()
+        extentlist[i,:]=[trans[3],
+                         trans[3] + (srcdatasetList[i].RasterYSize-1) * trans[5],
+                         trans[0],
+                         trans[0] + (srcdatasetList[i].RasterXSize-1) * trans[1]]
+    uExtent=[max(extentlist[:,0]),
+             min(extentlist[:,1]),
+             min(extentlist[:,2]),
+             max(extentlist[:,3]),
+             ]
+    deltaExtent=np.abs(extentlist-uExtent)
+    #暂时只处理横竖分辨率相同的情况
+    uGeotransform=srcdatasetList[0].GetGeoTransform()
+    gaindiclist=deltaExtent/uGeotransform[1]
+    uGeotransform[0]=uExtent[2]
+    uGeotransform[3]=uExtent[0]
+    a = np.array([[uGeotransform[1], uGeotransform[2]], [uGeotransform[4], uGeotransform[5]]])
+    b = np.array([uExtent[3] - uGeotransform[0], uExtent[1] - uGeotransform[3]])
+    (pixel, line)=np.linalg.solve(a, b)
+    uSizeX=pixel+1
+    uSizeY=line+1
+    print ('union size: %d,%d'%(uSizeX,uSizeY))
+    driver = srcdatasetList[0].GetDriver()
+    dstgeo=driver.Create('clearQA.img', uSizeX,uSizeY,1,gdal.GDT_Byte)
     return (dstgeo,gaindiclist)
 def getnamelist(srcdatasetList):
     return
