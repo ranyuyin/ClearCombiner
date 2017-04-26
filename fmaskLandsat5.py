@@ -130,7 +130,11 @@ def walkclearQA(dirname):
     masknamelist=getnamelist(srcdatasetList)
     # todo:保存masknamelist
     #return clearQA,masknamelist
+# todo
 def getFmasklist(dirname):
+    return
+# todo
+def getnamelist(srcdatasetList):
     return
 def unionGeo(srcdatasetList):
     extentlist=np.zeros((len(srcdatasetList),4))
@@ -164,8 +168,6 @@ def unionGeo(srcdatasetList):
     driver = srcdatasetList[0].GetDriver()
     dstgeo=driver.Create('clearQA.img', uSizeX,uSizeY,1,gdal.GDT_Byte)
     return (dstgeo,gaindiclist)
-def getnamelist(srcdatasetList):
-    return
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
 
