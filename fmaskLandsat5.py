@@ -132,7 +132,7 @@ def getFmasklist(dirname):
     return
 def unionGeo(srcdatasetList):
     extentlist=np.zeros((len(srcdatasetList),4))
-    for i in len(srcdatasetList):
+    for i in range(len(srcdatasetList)):
         trans=srcdatasetList[i].GetGeoTransform()
         extentlist[i,:]=[trans[3],
                          trans[3] + (srcdatasetList[i].RasterYSize-1) * trans[5],
