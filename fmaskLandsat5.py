@@ -118,12 +118,15 @@ def autofmask(dirname):
         fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
     print("begin this")
     LandsatFmaskRoutine(MTLfile)
-def walkfmask(dirname):
+def walkfmask(dirname,pbar):
     subfoldlist = os.listdir(dirname)
     subfoldlist = [os.path.join(dirname, i) for i in subfoldlist if os.path.isdir(os.path.join(dirname, i))]
+    pbar.setRange(0,2*len(subfoldlist))
+    pbar.setValue(0)
     for subdirname in subfoldlist:
         autofmask(subdirname)
-def walkclearQA(dirname):
+        pbar.setValue(pbar.value()+1)
+def walkclearQA(dirname,pbar):
     srcdatasetList=getFmasklist(dirname)
     os.chdir(dirname)
     (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
@@ -133,6 +136,7 @@ def walkclearQA(dirname):
         thisfmask = ((thisfmask == 1)|(thisfmask == 4) | (thisfmask == 5))
         thisfmask = np.pad(thisfmask, gaindiclist[i],'constant',constant_values=False)
         clearQA=clearQA+thisfmask*(2**i)
+        pbar.setValue(pbar.value() + 1)
     dstdataset.GetRasterBand(1).WriteArray(clearQA)
     return
 def getFmasklist(rootdir):

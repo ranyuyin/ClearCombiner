@@ -1,7 +1,7 @@
 # coding=utf-8
 import sys
 from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButton,QVBoxLayout,
-                             QAction, QFileDialog, QApplication,QLabel)
+                             QAction, QFileDialog, QApplication,QLabel,QProgressBar)
 import fmaskLandsat5
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
@@ -20,7 +20,7 @@ class qUfmask(QWidget):
         hboxrun.addStretch(0)
         hboxrun.addWidget(self.runButton)
         hboxrun.addStretch(0)
-
+        self.pbar= QProgressBar(self)
         self.foldnEdit=QLineEdit(self)
         foldlabel=QLabel(r'影像根目录：')
         hboxdir.addStretch(1)
@@ -29,6 +29,7 @@ class qUfmask(QWidget):
         hboxdir.addWidget(self.exButton)
         hboxdir.addStretch(1)
         vbox.addLayout(hboxdir)
+        vbox.addWidget(self.pbar)
         vbox.addLayout(hboxrun)
         self.setLayout(vbox)
         self.setWindowTitle(r'序列遥感数据质量检测-云')
@@ -42,8 +43,8 @@ class qUfmask(QWidget):
 
     def domainwork(self):
         rootdir=self.foldnEdit.text()
-        fmaskLandsat5.walkfmask(rootdir)
-        fmaskLandsat5.walkclearQA(rootdir)
+        fmaskLandsat5.walkfmask(rootdir,self.pbar)
+        fmaskLandsat5.walkclearQA(rootdir,self.pbar)
         return
 
 if __name__ == '__main__':
