@@ -1,7 +1,7 @@
 # coding=utf-8
 import sys
 from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButton,QVBoxLayout,
-                             QAction, QFileDialog, QApplication,QLabel,QProgressBar)
+                             QAction, QFileDialog, QApplication,QLabel,QProgressBar,QMessageBox)
 import fmaskLandsat5
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
@@ -45,6 +45,9 @@ class qUfmask(QWidget):
         rootdir=self.foldnEdit.text()
         fmaskLandsat5.walkfmask(rootdir,self.pbar)
         fmaskLandsat5.walkclearQA(rootdir,self.pbar)
+        ok=QMessageBox.information(self,'信息','完成！')
+        self.pbar.reset()
+        self.foldnEdit.clear()
         return
 
 if __name__ == '__main__':
