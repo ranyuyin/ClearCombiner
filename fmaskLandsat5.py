@@ -45,7 +45,7 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
                         cloudprobthreshold=100 * fmask.config.FmaskConfig.Eqn17CloudProbThresh,
                         nirsnowthreshold=fmask.config.FmaskConfig.Eqn20NirSnowThresh,
                         greensnowthreshold=fmask.config.FmaskConfig.Eqn20GreenSnowThresh,
-                        cloudbufferdistance=300,shadowbufferdistance=300):
+                        cloudbufferdistance=300,shadowbufferdistance=300):#threshold的添加
     thermalInfo = fmask.config.readThermalInfoFromLandsatMTL(MTLfile)
     anglesInfo = fmask.config.AnglesFileInfo(anglesfile, 3, anglesfile, 2, anglesfile, 1, anglesfile, 0)
     mtlInfo = fmask.config.readMTLFile(MTLfile)
@@ -73,13 +73,20 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
 
 def autofmask(dirname):
     os.chdir(dirname)
+    if os.path.exists('cloud.img'):
+        print('exist fmask, skip!')
+        return
     MTLfile = glob(os.path.join(dirname, '*MTL.TXT'))
     refname=os.path.join(dirname,'ref.img')
     themalname=os.path.join(dirname,'thermal.img')
-    srcReflist=os.path.join(dirname,'L*_B[1,2,3,4,5,7].TIF')
-    srcReflist=glob(srcReflist)
-    srcThemal=os.path.join(dirname,'L*_B6.TIF')
+    if os.path.split(dirname)[-1][2]=='5':
+        srcReflist=os.path.join(dirname,'L*_B[1,2,3,4,5,7].TIF')
+        srcThemal=os.path.join(dirname,'L*_B6.TIF')
+    elif os.path.split(dirname)[-1][2]=='7':
+        srcReflist = os.path.join(dirname, 'L*_B[1,2,3,4,5,7].TIF')
+        srcThemal = os.path.join(dirname, 'L*_B6_VCID_?.TIF')
     srcThemal=glob(srcThemal)
+    srcReflist=glob(srcReflist)
     anglesname=os.path.join(dirname,'angles.img')
     toaname=os.path.join(dirname,'toa.img')
     # 合并文件
@@ -120,33 +127,29 @@ def walkclearQA(dirname):
     srcdatasetList=getFmasklist(dirname)
     os.chdir(dirname)
     (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
-    clearQA=np.zeros((dstdataset.RasterYSize(),dstdataset.RasterXSize()))
+    clearQA=np.zeros((dstdataset.RasterYSize, dstdataset.RasterXSize))
     for i in range(len(srcdatasetList)):
         thisfmask = srcdatasetList[i].ReadAsArray()
-        thisfmask = (thisfmask == 1 or thisfmask == 4 or thisfmask == 5)
-        thisfmask = np.pad(thisfmask,gaindiclist[i],'constant',constant_values=0)
+        thisfmask = ((thisfmask == 1)|(thisfmask == 4) | (thisfmask == 5))
+        thisfmask = np.pad(thisfmask, gaindiclist[i],'constant',constant_values=False)
         clearQA=clearQA+thisfmask*(2**i)
     dstdataset.GetRasterBand(1).WriteArray(clearQA)
-    #masknamelist=getnamelist(srcdatasetList)
-
-    #return clearQA,masknamelist
-def getFmasklist(dirname):
+    return
+def getFmasklist(rootdir):
     fmasklist=[]
-    filenamelist=os.listdir(dirname)
-    f=open(os.path.join(dirname,'index.txt'),'w')
-    strfilelist='\r\n'.join(filenamelist)
+    filenamelist=os.listdir(rootdir)
+    subfoldlist = [os.path.join(rootdir, i) for i in filenamelist if os.path.isdir(os.path.join(rootdir, i))]
+    f=open(os.path.join(rootdir, 'index.txt'), 'w')
+    strsubfoldlist='\r\n'.join(subfoldlist)
     #f.write(filenamelist)
-    f.writelines(strfilelist)
+    f.writelines(strsubfoldlist)
     #print filename
-    for fn in filenamelist:
+    for subdirname in subfoldlist:
         #subdirname=dirname+'\\'+fn
-        subdirname=os.path.join(dirname,fn,'cloud.img')
+        subdirname=os.path.join(rootdir, subdirname, 'cloud.img')
         dataset=gdal.Open(subdirname)
         fmasklist.append(dataset)
     return fmasklist
-# todo: 1
-def getnamelist(srcdatasetList):
-    return
 def unionGeo(srcdatasetList):
     extentlist=np.zeros((len(srcdatasetList),4))
     for i in range(len(srcdatasetList)):
@@ -163,13 +166,15 @@ def unionGeo(srcdatasetList):
     deltaExtent=np.abs(extentlist-uExtent)
     #暂时只处理横竖分辨率相同的情况
     uGeotransform=srcdatasetList[0].GetGeoTransform()
-    gaindiclist=deltaExtent/uGeotransform[1]
+    gaindiclist=(deltaExtent/uGeotransform[1]).astype('int16')
     gaindiclist=[
         [(gaindiclist[i,0],gaindiclist[i,1]),
         (gaindiclist[i,2],gaindiclist[i,3])]
         for i in range(len(gaindiclist))]
+    uGeotransform=list(uGeotransform)
     uGeotransform[0]=uExtent[2]
     uGeotransform[3]=uExtent[0]
+    uGeotransform=tuple(uGeotransform)
     a = np.array([[uGeotransform[1], uGeotransform[2]], [uGeotransform[4], uGeotransform[5]]])
     b = np.array([uExtent[3] - uGeotransform[0], uExtent[1] - uGeotransform[3]])
     (pixel, line)=np.linalg.solve(a, b)
@@ -177,7 +182,7 @@ def unionGeo(srcdatasetList):
     uSizeY=line+1
     print ('union size: %d,%d'%(uSizeX,uSizeY))
     driver = srcdatasetList[0].GetDriver()
-    dstgeo=driver.Create('clearQA.img', uSizeX,uSizeY,1,gdal.GDT_Byte)
+    dstgeo=driver.Create('clearQA.img', int(uSizeX),int(uSizeY),1,gdal.GDT_Byte)
     return (dstgeo,gaindiclist)
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
