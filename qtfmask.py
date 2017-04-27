@@ -6,28 +6,29 @@ import fmaskLandsat5
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
     def __init__(self):
-        super(qUfmask, self).__init__()
-        self.initUI()
+        super(qUfmask, self).__init__()#super
+        self.initUI()#self
     def initUI(self):
-        hbox = QHBoxLayout()
+        hboxdir=QHBoxLayout()#QhBoxLayout
         hboxrun=QHBoxLayout()
         vbox=QVBoxLayout()
         self.exButton = QPushButton("浏览",self)
         self.exButton.clicked.connect(self.selectfold)
         self.runButton=QPushButton("运行")
         self.runButton.sizeHint()
-        self.runButton.clicked.connect(self.dowalkfmask)
+        self.runButton.clicked.connect(self.domainwork)
         hboxrun.addStretch(0)
         hboxrun.addWidget(self.runButton)
         hboxrun.addStretch(0)
+
         self.foldnEdit=QLineEdit(self)
         foldlabel=QLabel(r'影像根目录：')
-        hbox.addStretch(1)
-        hbox.addWidget(foldlabel)
-        hbox.addWidget(self.foldnEdit)
-        hbox.addWidget(self.exButton)
-        hbox.addStretch(1)
-        vbox.addLayout(hbox)
+        hboxdir.addStretch(1)
+        hboxdir.addWidget(foldlabel)
+        hboxdir.addWidget(self.foldnEdit)
+        hboxdir.addWidget(self.exButton)
+        hboxdir.addStretch(1)
+        vbox.addLayout(hboxdir)
         vbox.addLayout(hboxrun)
         self.setLayout(vbox)
         self.setWindowTitle(r'序列遥感数据质量检测-云')
@@ -37,10 +38,15 @@ class qUfmask(QWidget):
     def selectfold(self):
         name = QFileDialog.getExistingDirectory(self)
         self.foldnEdit.setText(name)
-    def dowalkfmask(self):
+        return
+
+    def domainwork(self):
         rootdir=self.foldnEdit.text()
         fmaskLandsat5.walkfmask(rootdir)
+        fmaskLandsat5.walkclearQA(rootdir)
+        return
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = qUfmask()
+    ex=qUfmask()
     sys.exit(app.exec_())
