@@ -127,13 +127,24 @@ def walkclearQA(dirname):
         thisfmask = np.pad(thisfmask,gaindiclist[i],'constant',constant_values=0)
         clearQA=clearQA+thisfmask*(2**i)
     dstdataset.GetRasterBand(1).WriteArray(clearQA)
-    masknamelist=getnamelist(srcdatasetList)
-    # todo:保存masknamelist
+    #masknamelist=getnamelist(srcdatasetList)
+
     #return clearQA,masknamelist
-# todo
 def getFmasklist(dirname):
-    return
-# todo
+    fmasklist=[]
+    filenamelist=os.listdir(dirname)
+    f=open(os.path.join(dirname,'index.txt'),'w')
+    strfilelist='\r\n'.join(filenamelist)
+    #f.write(filenamelist)
+    f.writelines(strfilelist)
+    #print filename
+    for fn in filenamelist:
+        #subdirname=dirname+'\\'+fn
+        subdirname=os.path.join(dirname,fn,'cloud.img')
+        dataset=gdal.Open(subdirname)
+        fmasklist.append(dataset)
+    return fmasklist
+# todo: 1
 def getnamelist(srcdatasetList):
     return
 def unionGeo(srcdatasetList):
