@@ -142,6 +142,7 @@ def walkclearQA(dirname,pbar):
 def getFmasklist(rootdir):
     fmasklist=[]
     filenamelist=os.listdir(rootdir)
+    filenamelist = sorted(filenamelist, key=lambda d: float(d[9:15]))
     subfoldlist = [os.path.join(rootdir, i) for i in filenamelist if os.path.isdir(os.path.join(rootdir, i))]
     f=open(os.path.join(rootdir, 'index.txt'), 'w')
     strsubfoldlist='\r\n'.join(subfoldlist)
