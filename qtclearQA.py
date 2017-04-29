@@ -70,18 +70,22 @@ class qUfmask(QWidget):
         if rootdirname=='':
             return
         rootdirname=rootdirname.replace('/','\\')
-        self.foldnEdit.setText(rootdirname)
         filenamelist=os.listdir(rootdirname)
         subfoldlist=[i for i in filenamelist if os.path.isdir(os.path.join(rootdirname,i))]
         if len(subfoldlist)>16:
             reply1=QMessageBox.information(self,'警告',"输入数量过多，无法进行综合，将只进行云检测！")
             self.doQAtag=False
-        sorted(subfoldlist, key=lambda d: float(d[3:8]))
+        try:
+            sorted(subfoldlist, key=lambda d: float(d[3:8]))
+        except ValueError:
+            QMessageBox.information(self, '错误', "请保证输入路径内仅包含未修改名称的Landsat原始数据文件夹!")
+            return
         if subfoldlist[0][3:9]!=subfoldlist[-1][3:9]:
             reply2=QMessageBox.information(self, '警告', "输入空间范围不一致，无法进行综合，将只进行云检测！")
             self.doQAtag=False
         if self.doQAtag&(self.QAEdit.text() == ''):
             self.QAEdit.setText(os.path.join(rootdirname,'clearQA.tif'))
+        self.foldnEdit.setText(rootdirname)
         return
     def saveQAindex(self):
         clearQAname = QFileDialog.getSaveFileName(self,'保存为',self.QAEdit.text(),
