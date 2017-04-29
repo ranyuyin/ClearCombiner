@@ -118,6 +118,7 @@ def autofmask(dirname):
         fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
     print("begin this")
     LandsatFmaskRoutine(MTLfile)
+
 def walkfmask(dirname,pbar):
     subfoldlist = os.listdir(dirname)
     subfoldlist = [os.path.join(dirname, i) for i in subfoldlist if os.path.isdir(os.path.join(dirname, i))]
@@ -126,8 +127,8 @@ def walkfmask(dirname,pbar):
     for subdirname in subfoldlist:
         autofmask(subdirname)
         pbar.setValue(pbar.value()+1)
+
 def walkclearQA(dirname,pbar,QAconfig):
-    #todo: 参数使用
     srcdatasetList=getFmasklist(dirname,QAconfig)
     os.chdir(dirname)
     (dstdataset,gaindiclist)=unionGeo(srcdatasetList,QAconfig)
@@ -140,6 +141,7 @@ def walkclearQA(dirname,pbar,QAconfig):
         pbar.setValue(pbar.value() + 1)
     dstdataset.GetRasterBand(1).WriteArray(clearQA)
     return
+
 def getFmasklist(rootdir,QAconfig):
     fmasklist=[]
     filenamelist=os.listdir(rootdir)
@@ -156,7 +158,7 @@ def getFmasklist(rootdir,QAconfig):
         dataset=gdal.Open(subdirname)
         fmasklist.append(dataset)
     return fmasklist
-def unionGeo(srcdatasetList,QAconfig):
+def unionGeo(srcdatasetList, QAconfig):
     extentlist=np.zeros((len(srcdatasetList),4))
     for i in range(len(srcdatasetList)):
         trans=srcdatasetList[i].GetGeoTransform()
@@ -188,7 +190,11 @@ def unionGeo(srcdatasetList,QAconfig):
     uSizeY=line+1
     #print ('union size: %d,%d'%(uSizeX,uSizeY))
     driver = gdal.GetDriverByName(QAconfig.drivername)
-    dstgeo=driver.Create(QAconfig.QAname, int(uSizeX),int(uSizeY),1,gdal.GDT_Int16)
+    if (len(srcdatasetList)/8)==0:
+        bitformat=gdal.GDT_Byte
+    elif (len(srcdatasetList)/8)==1:
+        bitformat = gdal.GDT_Int16
+    dstgeo=driver.Create(QAconfig.QAname, int(uSizeX),int(uSizeY),1,bitformat)
     return (dstgeo,gaindiclist)
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')

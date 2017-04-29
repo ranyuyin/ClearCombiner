@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButt
                              QAction, QFileDialog, QApplication,QLabel,QProgressBar,QMessageBox,
                              )
 from PyQt5.QtGui import QFont
-import fmaskLandsat5
+import fmaskLandsat5,gdal
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
     def __init__(self):
@@ -66,7 +66,7 @@ class qUfmask(QWidget):
         self.doQAtag=True
 
     def selectfold(self):
-        rootdirname = QFileDialog.getExistingDirectory(self,'选择文件夹',self.foldnEdit.text(),options=QFileDialog.DontResolveSymlinks)
+        rootdirname = QFileDialog.getExistingDirectory(self,'选择文件夹',self.foldnEdit.text())
         if rootdirname=='':
             return
         rootdirname=rootdirname.replace('/','\\')
@@ -78,24 +78,35 @@ class qUfmask(QWidget):
             self.doQAtag=False
         sorted(subfoldlist, key=lambda d: float(d[3:8]))
         if subfoldlist[0][3:9]!=subfoldlist[-1][3:9]:
-            reply2=QMessageBox.information(self,'警告',"输入空间范围不一致，无法进行综合，将只进行云检测！")
+            reply2=QMessageBox.information(self, '警告', "输入空间范围不一致，无法进行综合，将只进行云检测！")
             self.doQAtag=False
-        if self.doQAtag&(self.QAEdit.text()==''):
+        if self.doQAtag&(self.QAEdit.text() == ''):
             self.QAEdit.setText(os.path.join(rootdirname,'clearQA.tif'))
         return
     def saveQAindex(self):
-        clearQAname=QFileDialog.getSaveFileName(self,'保存为',self.QAEdit.text(),'*')
-        if clearQAname[0]=='':
+        clearQAname = QFileDialog.getSaveFileName(self,'保存为',self.QAEdit.text(),
+                                                  'GeoTiff(*.tif);;Erdas Image(*.img)')
+        if clearQAname[0] == '':
             return
+        if clearQAname[1] == 'GeoTiff(*.tif)':
+            self.QAformat='GTiff'
+        elif clearQAname[1] == 'Erdas Image(*.img)':
+            self.QAformat = 'HFA'
+
         clearQAname = clearQAname[0].replace('/','\\')
         self.QAEdit.setText(clearQAname)
     def domainwork(self):
-        rootdir=self.foldnEdit.text()
+        rootdir = self.foldnEdit.text()
         fmaskLandsat5.walkfmask(rootdir,self.pbar)
         if self.doQAtag:
-            QAconfigPar=QAconfig(QAname=self.QAEdit.text(),indexname=os.path.join(
-                os.path.split(self.QAEdit.text())[-2],'index.txt'))
+            QAconfigPar = QAconfig(drivename=self.QAformat, QAname=self.QAEdit.text(),
+                                   indexname=os.path.join(
+                                       os.path.split(self.QAEdit.text())[-2],
+                                       'index.txt'))
             fmaskLandsat5.walkclearQA(rootdir,pbar=self.pbar,QAconfig=QAconfigPar)
+        else:
+            self.pbar.setValue(2*self.pbar.value())
+            ok = QMessageBox.information(self, '信息', '完成！(已跳过综合评估)')
         ok=QMessageBox.information(self,'信息','完成！')
         self.pbar.reset()
         self.foldnEdit.clear()
