@@ -126,10 +126,11 @@ def walkfmask(dirname,pbar):
     for subdirname in subfoldlist:
         autofmask(subdirname)
         pbar.setValue(pbar.value()+1)
-def walkclearQA(dirname,pbar):
-    srcdatasetList=getFmasklist(dirname)
+def walkclearQA(dirname,pbar,QAconfig):
+    #todo: 参数使用
+    srcdatasetList=getFmasklist(dirname,QAconfig)
     os.chdir(dirname)
-    (dstdataset,gaindiclist)=unionGeo(srcdatasetList)
+    (dstdataset,gaindiclist)=unionGeo(srcdatasetList,QAconfig)
     clearQA=np.zeros((dstdataset.RasterYSize, dstdataset.RasterXSize))
     for i in range(len(srcdatasetList)):
         thisfmask = srcdatasetList[i].ReadAsArray()
@@ -139,12 +140,12 @@ def walkclearQA(dirname,pbar):
         pbar.setValue(pbar.value() + 1)
     dstdataset.GetRasterBand(1).WriteArray(clearQA)
     return
-def getFmasklist(rootdir):
+def getFmasklist(rootdir,QAconfig):
     fmasklist=[]
     filenamelist=os.listdir(rootdir)
-    filenamelist = sorted(filenamelist, key=lambda d: float(d[9:15]))
     subfoldlist = [os.path.join(rootdir, i) for i in filenamelist if os.path.isdir(os.path.join(rootdir, i))]
-    f=open(os.path.join(rootdir, 'index.txt'), 'w')
+    subfoldlist = sorted(subfoldlist, key=lambda d: float(os.path.split(d)[-1][9:15]))
+    f=open(os.path.join(rootdir, QAconfig.indexname), 'w')
     strsubfoldlist='\r\n'.join(subfoldlist)
     #f.write(filenamelist)
     f.writelines(strsubfoldlist)
@@ -155,7 +156,7 @@ def getFmasklist(rootdir):
         dataset=gdal.Open(subdirname)
         fmasklist.append(dataset)
     return fmasklist
-def unionGeo(srcdatasetList):
+def unionGeo(srcdatasetList,QAconfig):
     extentlist=np.zeros((len(srcdatasetList),4))
     for i in range(len(srcdatasetList)):
         trans=srcdatasetList[i].GetGeoTransform()
@@ -185,11 +186,9 @@ def unionGeo(srcdatasetList):
     (pixel, line)=np.linalg.solve(a, b)
     uSizeX=pixel+1
     uSizeY=line+1
-    print ('union size: %d,%d'%(uSizeX,uSizeY))
-    driver = srcdatasetList[0].GetDriver()
-    dstgeo=driver.Create('clearQA.img', int(uSizeX),int(uSizeY),1,gdal.GDT_Byte)
+    #print ('union size: %d,%d'%(uSizeX,uSizeY))
+    driver = gdal.GetDriverByName(QAconfig.drivername)
+    dstgeo=driver.Create(QAconfig.QAname, int(uSizeX),int(uSizeY),1,gdal.GDT_Int16)
     return (dstgeo,gaindiclist)
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
-
-
