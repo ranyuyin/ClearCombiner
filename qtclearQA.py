@@ -1,4 +1,5 @@
 # coding=utf-8
+import os
 import sys
 from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButton,QVBoxLayout,
                              QAction, QFileDialog, QApplication,QLabel,QProgressBar,QMessageBox)
@@ -38,7 +39,16 @@ class qUfmask(QWidget):
 
     def selectfold(self):
         name = QFileDialog.getExistingDirectory(self)
-        self.foldnEdit.setText(name)
+        filenamelist=os.listdir(name)
+        subfoldlist=[i for i in filenamelist if os.path.isdir(os.path.join(name,i))]
+        if len(subfoldlist)>16:
+            reply1=QMessageBox.information(self,'warnning',"The number of documents does't satisfy the requirements!")
+        else:
+            sorted(subfoldlist, key=lambda d: float(d[3:8]))
+            if subfoldlist[0][3:9]==subfoldlist[-1][3:9]:
+                self.foldnEdit.setText(name)
+            else:
+                  reply2=QMessageBox.information(self,'warnning',"The image you selected is not in the same area!")
         return
 
     def domainwork(self):
