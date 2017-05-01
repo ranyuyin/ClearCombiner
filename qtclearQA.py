@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QTextEdit,QLineEdit,QHBoxLayout, QPushButt
                              QAction, QFileDialog, QApplication,QLabel,QProgressBar,QMessageBox,
                              )
 from PyQt5.QtGui import QFont
-import fmaskLandsat5,gdal
+import fmaskLandsat5
 from PyQt5.QtGui import QIcon
 class qUfmask(QWidget):
     def __init__(self):
@@ -20,7 +20,6 @@ class qUfmask(QWidget):
         hboxdir=QHBoxLayout()#QhBoxLayout
         self.direxButton = QPushButton("浏览", self)
         self.direxButton.clicked.connect(self.selectfold)
-        self.pbar= QProgressBar(self)
         self.foldnEdit=QLineEdit(self)
         foldlabel=QLabel(r'  影像根目录：')
         hboxdir.addStretch(1)
@@ -51,17 +50,23 @@ class qUfmask(QWidget):
         hboxrun.addStretch(0)
 
         #总BOX
+        self.pbar= QProgressBar(self)
+        self.pbar.setValue(0)
         vbox=QVBoxLayout()
+        vbox.addSpacing(10)
         vbox.addWidget(Title)
+        vbox.addSpacing(10)
         vbox.addLayout(hboxdir)
+        vbox.addSpacing(5)
         vbox.addLayout(QAhbox)
+        vbox.addSpacing(5)
         vbox.addWidget(self.pbar)
+        vbox.addSpacing(5)
         vbox.addLayout(hboxrun)
         self.setLayout(vbox)
         self.setWindowTitle(r'序列遥感数据质量检测-云')
         self.sizeHint()
         self.show()
-
         #运行标记
         self.doQAtag=True
 
@@ -86,7 +91,9 @@ class qUfmask(QWidget):
         if self.doQAtag&(self.QAEdit.text() == ''):
             self.QAEdit.setText(os.path.join(rootdirname,'clearQA.tif'))
         self.foldnEdit.setText(rootdirname)
+        self.QAformat = 'GTiff'
         return
+
     def saveQAindex(self):
         clearQAname = QFileDialog.getSaveFileName(self,'保存为',self.QAEdit.text(),
                                                   'GeoTiff(*.tif);;Erdas Image(*.img)')
@@ -99,10 +106,12 @@ class qUfmask(QWidget):
 
         clearQAname = clearQAname[0].replace('/','\\')
         self.QAEdit.setText(clearQAname)
+
     def domainwork(self):
         rootdir = self.foldnEdit.text()
         fmaskLandsat5.walkfmask(rootdir,self.pbar)
         if self.doQAtag:
+            #在clearQA影像的同一目录下生成index.txt
             QAconfigPar = QAconfig(drivename=self.QAformat, QAname=self.QAEdit.text(),
                                    indexname=os.path.join(
                                        os.path.split(self.QAEdit.text())[-2],
@@ -116,11 +125,13 @@ class qUfmask(QWidget):
         self.foldnEdit.clear()
         self.QAEdit.clear()
         return
+
 class QAconfig:
     def __init__(self,drivename='GTiff',QAname='clearQA.tif',indexname='index.txt'):
         self.drivername=drivename
         self.QAname=QAname
         self.indexname=indexname
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex=qUfmask()

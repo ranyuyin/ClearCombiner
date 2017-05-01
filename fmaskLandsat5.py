@@ -6,23 +6,73 @@ Created on Mon Apr 17 09:13:29 2017
 """
 import os
 from glob import glob
-from fmask import landsatangles,saturationcheck
+from fmask import landsatangles,saturationcheck,landsatTOA
 import fmask,gdal
-import gdal_merge,ConvTrans
 import numpy as np
 from rios import fileinfo
-def GlobArgv(Argv):
-    outList=[]
-    for arg in Argv:
-        expanded = glob(arg)
-        if len(expanded) == 0:
-            # not a file, just add the original string
-            outList.append(arg)
-        else:
-            outList.extend(expanded)
 
-    #outList = ' '.join(outList)
-    return outList
+def autofmask(dirname):
+    os.chdir(dirname)
+    if os.path.exists('cloud.img'):
+        print('exist fmask, skip!')
+        return
+    MTLfile = glob(os.path.join(dirname, '*MTL.TXT'))
+    refname=os.path.join(dirname,'ref.img')
+    themalname=os.path.join(dirname,'thermal.img')
+    if os.path.split(dirname)[-1][2]=='5':
+        srcReflist=os.path.join(dirname,'L*_B[1,2,3,4,5,7].TIF')
+        srcThemal=os.path.join(dirname,'L*_B6.TIF')
+    elif os.path.split(dirname)[-1][2]=='7':
+        srcReflist = os.path.join(dirname, 'L*_B[1,2,3,4,5,7].TIF')
+        srcThemal = os.path.join(dirname, 'L*_B6_VCID_?.TIF')
+    srcThemal=glob(srcThemal)
+    srcReflist=glob(srcReflist)
+    anglesname=os.path.join(dirname,'angles.img')
+    toaname=os.path.join(dirname,'toa.img')
+    # 合并文件
+    if not os.path.exists(refname):
+        LandsatBandMerge(srcReflist,refname,'HFA')
+    else:
+        print('跳过组合多光谱')
+    if not os.path.exists(themalname):
+        LandsatBandMerge(srcThemal, themalname, 'HFA')
+    else:
+        print('跳过组合热红外')
+    # 生成角度文件
+    # 读取文件信息
+    MTLfile = MTLfile[0]
+    mtlInfo = fmask.config.readMTLFile(MTLfile)
+    if not os.path.exists(anglesname):
+        imgInfo = fileinfo.ImageInfo(refname)
+        corners = landsatangles.findImgCorners(refname, imgInfo)
+        nadirLine = landsatangles.findNadirLine(corners)
+        extentSunAngles = landsatangles.sunAnglesForExtent(imgInfo, mtlInfo)
+        satAzimuth = landsatangles.satAzLeftRight(nadirLine)
+        landsatangles.makeAnglesImage(refname, anglesname, nadirLine, extentSunAngles, satAzimuth, imgInfo)
+    # 生成辅助临时文件：反射率
+    if not os.path.exists(toaname):
+        landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
+    print("begin this")
+    LandsatFmaskRoutine(MTLfile)
+
+def LandsatBandMerge(imlist,dstname,drivename=''):
+    if drivename=='':
+        drivename='GTiff'
+    firsttime=1
+    for bandindex in range(len(imlist)):
+        bandfile=imlist[bandindex]
+        Dataset=gdal.Open(bandfile)
+        bandArray=Dataset.ReadAsArray(0,0,Dataset.RasterXSize,Dataset.RasterYSize)
+        if firsttime:
+            driver = gdal.GetDriverByName(drivename)
+            dst_dataset = driver.Create(dstname, Dataset.RasterXSize,Dataset.RasterYSize, len(imlist), Dataset.GetRasterBand(1).DataType)
+            im_geotrans=Dataset.GetGeoTransform()
+            im_proj=Dataset.GetProjection()
+            dst_dataset.SetGeoTransform(im_geotrans)
+            dst_dataset.SetProjection(im_proj)
+            firsttime=0
+        dst_dataset.GetRasterBand(bandindex+1).WriteArray(bandArray)
+
 def GetLandsatSensor(MTLfile):
     mtlInfo = fmask.config.readMTLFile(MTLfile)
     landsat = mtlInfo['SPACECRAFT_ID'][-1]
@@ -38,6 +88,20 @@ def GetLandsatSensor(MTLfile):
     else:
         raise SystemExit('Unsupported Landsat sensor')
     return sensor
+
+def GlobArgv(Argv):
+    outList=[]
+    for arg in Argv:
+        expanded = glob(arg)
+        if len(expanded) == 0:
+            # not a file, just add the original string
+            outList.append(arg)
+        else:
+            outList.extend(expanded)
+
+    #outList = ' '.join(outList)
+    return outList
+
 def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
                         anglesfile='angles.img',outfile='cloud.img',
                         keepintermediates=False,verbose=True,
@@ -70,54 +134,6 @@ def LandsatFmaskRoutine(MTLfile,toafile='toa.img',themalfile='thermal.img',
     fmaskConfig.setCloudBufferSize(int(cloudbufferdistance / toaImgInfo.xRes))
     fmaskConfig.setShadowBufferSize(int(shadowbufferdistance / toaImgInfo.xRes))
     fmask.fmask.doFmask(fmaskFilenames, fmaskConfig)
-
-def autofmask(dirname):
-    os.chdir(dirname)
-    if os.path.exists('cloud.img'):
-        print('exist fmask, skip!')
-        return
-    MTLfile = glob(os.path.join(dirname, '*MTL.TXT'))
-    refname=os.path.join(dirname,'ref.img')
-    themalname=os.path.join(dirname,'thermal.img')
-    if os.path.split(dirname)[-1][2]=='5':
-        srcReflist=os.path.join(dirname,'L*_B[1,2,3,4,5,7].TIF')
-        srcThemal=os.path.join(dirname,'L*_B6.TIF')
-    elif os.path.split(dirname)[-1][2]=='7':
-        srcReflist = os.path.join(dirname, 'L*_B[1,2,3,4,5,7].TIF')
-        srcThemal = os.path.join(dirname, 'L*_B6_VCID_?.TIF')
-    srcThemal=glob(srcThemal)
-    srcReflist=glob(srcReflist)
-    anglesname=os.path.join(dirname,'angles.img')
-    toaname=os.path.join(dirname,'toa.img')
-    # 合并文件
-    refMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o', refname]
-    refMergeArgv.extend(srcReflist)
-    themalMergeArgv = ['', '-separate', '-of', 'HFA', '-co', 'COMPRESSED=YES', '-o',themalname]
-    themalMergeArgv.extend(srcThemal)
-    if not os.path.exists(refname):
-        gdal_merge.main(refMergeArgv)
-    else:
-        print('跳过组合多光谱')
-    if not os.path.exists(themalname):
-        gdal_merge.main(themalMergeArgv)
-    else:
-        print('跳过组合热红外')
-    # 生成角度文件
-    # 读取文件信息
-    MTLfile = MTLfile[0]
-    mtlInfo = fmask.config.readMTLFile(MTLfile)
-    if not os.path.exists(anglesname):
-        imgInfo = fileinfo.ImageInfo(refname)
-        corners = landsatangles.findImgCorners(refname, imgInfo)
-        nadirLine = landsatangles.findNadirLine(corners)
-        extentSunAngles = landsatangles.sunAnglesForExtent(imgInfo, mtlInfo)
-        satAzimuth = landsatangles.satAzLeftRight(nadirLine)
-        landsatangles.makeAnglesImage(refname, anglesname, nadirLine, extentSunAngles, satAzimuth, imgInfo)
-    # 生成辅助临时文件：反射率
-    if not os.path.exists(toaname):
-        fmask.landsatTOA.makeTOAReflectance(refname, MTLfile, anglesname, toaname)
-    print("begin this")
-    LandsatFmaskRoutine(MTLfile)
 
 def walkfmask(dirname,pbar):
     subfoldlist = os.listdir(dirname)
@@ -158,6 +174,7 @@ def getFmasklist(rootdir,QAconfig):
         dataset=gdal.Open(subdirname)
         fmasklist.append(dataset)
     return fmasklist
+
 def unionGeo(srcdatasetList, QAconfig):
     extentlist=np.zeros((len(srcdatasetList),4))
     for i in range(len(srcdatasetList)):
@@ -196,5 +213,6 @@ def unionGeo(srcdatasetList, QAconfig):
         bitformat = gdal.GDT_Int16
     dstgeo=driver.Create(QAconfig.QAname, int(uSizeX),int(uSizeY),1,bitformat)
     return (dstgeo,gaindiclist)
+
 if __name__=='__main__':
     autofmask('D:\\chang_Delta\\2010\\LT51200382010231BJC00')
